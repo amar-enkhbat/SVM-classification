@@ -1,17 +1,19 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
-Created on Thu Apr  5 14:13:04 2018
+Created on Tue Apr  3 15:45:26 2018
 
 @author: amar
 """
 
 import numpy as np
-import matplotlib.pyplot as plt
 import pandas as pd
+import matplotlib.pyplot as plt
+
+np.set_printoptions(suppress=True)
 
 # =============================================================================
-# Data import
+# Importing data
 # =============================================================================
 
 columns = ["Class", "Alcohol", "Malic acid", 
@@ -22,28 +24,86 @@ columns = ["Class", "Alcohol", "Malic acid",
 wine = pd.read_csv('wine.data')
 wine.columns = columns
 
-X, y = wine.iloc[:107, 1:3].values, wine.iloc[:107, 0].values
+# =============================================================================
+# Separating data into 2 classes
+# =============================================================================
+
+wine_value = wine.values
+wine = pd.DataFrame(wine_value, columns = columns)
+
+X, y = wine.iloc[:, 1:3].values, wine.iloc[:, 0].values
+X = X[:len(y[y != 3])]
+y = y[:len(y[y != 3])]
+
+print("Number of unique classes:")
+print(np.unique(y))
 
 # =============================================================================
-# Data mapping
+# Class mapping
 # =============================================================================
-class_length = len(y[y == 1]) 
+y[y == 1] = -1
+y[y == 2] = 1
 
-y[:class_length] = -1
-y[class_length:] = 1
+#=============================================================================
+# Shuffling data
+# =============================================================================
+X = np.column_stack((X, y))
+rgen = np.random.RandomState(1)
+rgen.shuffle(X)
+y = X[:, 2]
+X = X[:, :2]
 
 # =============================================================================
-# Data standardization
+# Seperating data into train and test sets
 # =============================================================================
-X_std = np.copy(X.astype(float))
-X_std[:, 0] = (X[:, 0] - X[:, 0].mean()) / X[:, 0].std()
-X_std[:, 1] = (X[:, 1] - X[:, 1].mean()) / X[:, 1].std()
+
+train_size = 0.8
+
+X_train = X[:int(len(X) * train_size), :]
+X_test = X[int(len(X) * train_size):, :]
+y_train = y[:int(len(y) * train_size)]
+y_test = y[int(len(y) * train_size):]
+
+plt.hist(X_train)
+plt.show()
+
+# =============================================================================
+# Data Standardization
+# =============================================================================
+def mean(X):
+    sum = 0
+    for i in X:
+        sum += i
+    return sum / len(X)
+
+def standard_deviation(X):
+    sum = 0
+    for i in X:
+        sum += (i - mean(X)) ** 2
+    return (sum / (len(X) - 1)) ** 0.5
+
+        
+X_train_std = (X_train - mean(X_train)) / standard_deviation(X_train)
+
+plt.hist(X_train_std)
+plt.show()
+#plt.savefig("X_train_std_detailed.png")
+
+
+# =============================================================================
+# SVM classification with Grid-Search
+# =============================================================================
+
+param_grid = {
+        'C': [0.01, 0.1, 1, 10, 100, 1000],
+        'gamma': [0.01, 0.1, 1, 10, 100, 1000]
+        }
 
 # =============================================================================
 # Data plot
 # =============================================================================
-plt.scatter(X_std[:48, 0], X_std[:48, 1], label = "Class 0", marker = "x")
-plt.scatter(X_std[48:, 0], X_std[48:, 1], label = "Class 1", marker = "v")
+plt.scatter(X_train_std[y_train == -1, 0], X_train_std[y_train == -1, 1], label = "Class 0", marker = "x")
+plt.scatter(X_train_std[y_train == 1, 0], X_train_std[y_train == 1, 1], label = "Class 1", marker = "v")
 plt.xlabel("Alcohol")
 plt.ylabel("Malic Acid")
 plt.legend()
@@ -53,7 +113,7 @@ plt.legend()
 # =============================================================================
 random_state = 1
 rgen = np.random.RandomState(random_state)
-weight = rgen.normal(loc = 0.0, scale = 0.01, size = X_std.shape[1] + 1)
+weight = rgen.normal(loc = 0.0, scale = 0.01, size = X_train_std.shape[1] + 1)
 
 # =============================================================================
 # Learning rate and epoch
@@ -66,12 +126,12 @@ epoch = 100
 # Cost function is SSE(Sum of Squared Errors)
 # =============================================================================
 for i in range(epoch):
-    output = y * (weight[0] + np.dot(X_std, weight[1:]))
+    output = y_train * (weight[0] + np.dot(X_train_std, weight[1:]))
     output = output >= 1
     if np.unique(output).all() != True:
-        net_input = np.dot(X_std, weight[1:]) + weight[0]
-        errors = y - net_input
-        weight[1:] += eta * X_std.T.dot(errors)
+        net_input = np.dot(X_train_std, weight[1:]) + weight[0]
+        errors = y_train - net_input
+        weight[1:] += eta * X_train_std.T.dot(errors)
         weight[0] = eta * errors.sum()
     else:
         print(weight)
