@@ -19,7 +19,7 @@ columns = ["Class", "Alcohol", "Malic acid",
            "Total phenols", "Flavanoids", "Nonflavanoid phenols", 
            "Proanthocyanins", "Color intensity", "Hue", 
            "OD280/OD315 of diluted wines", "Proline"]
-wine = pd.read_csv('wine.data')
+wine = pd.read_csv('wine_train.data')
 wine.columns = columns
 
 X, y = wine.iloc[:107, 1:3].values, wine.iloc[:107, 0].values
@@ -35,18 +35,30 @@ y[class_length:] = 1
 # =============================================================================
 # Data standardization
 # =============================================================================
-X_std = np.copy(X.astype(float))
-X_std[:, 0] = (X[:, 0] - X[:, 0].mean()) / X[:, 0].std()
-X_std[:, 1] = (X[:, 1] - X[:, 1].mean()) / X[:, 1].std()
+def mean(X):
+    sum = 0.0
+    for i in X:
+        sum += i
+    return sum / len(X)
+
+def standard_deviation(X):
+    sum = 0.0
+    for i in X:
+        sum += (i - mean(X)) ** 2.0
+    return (sum / len(X)) ** 0.5
+
+X_std = np.copy(X.astype(float))     
+X_std[:, 0] = (X[:, 0] - mean(X[:, 0])) / standard_deviation(X[:, 0])
+X_std[:, 1] = (X[:, 1] - mean(X[:, 1])) / standard_deviation(X[:, 1])
 
 # =============================================================================
 # Data plot
 # =============================================================================
-plt.scatter(X_std[:48, 0], X_std[:48, 1], label = "Class 0", marker = "x")
-plt.scatter(X_std[48:, 0], X_std[48:, 1], label = "Class 1", marker = "v")
-plt.xlabel("Alcohol")
-plt.ylabel("Malic Acid")
-plt.legend()
+#plt.scatter(X_std[:48, 0], X_std[:48, 1], label = "Class 0", marker = "x")
+#plt.scatter(X_std[48:, 0], X_std[48:, 1], label = "Class 1", marker = "v")
+#plt.xlabel("Alcohol")
+#plt.ylabel("Malic Acid")
+#plt.legend()
 
 # =============================================================================
 # Weight initialization
@@ -58,9 +70,19 @@ weight = rgen.normal(loc = 0.0, scale = 0.01, size = X_std.shape[1] + 1)
 # =============================================================================
 # Learning rate and epoch
 # =============================================================================
-eta = 0.001
-epoch = 100
-
+eta = 0.01
+epoch = 10
+t = np.arange(-2, 2)
+plt.scatter(X_std[:48, 0], X_std[:48, 1], label = "Class 0", marker = "x")
+plt.scatter(X_std[48:, 0], X_std[48:, 1], label = "Class 1", marker = "v")
+plt.xlabel("Alcohol")
+plt.ylabel("Malic Acid")
+plt.xlim(-3, 3)
+plt.ylim(-3, 3)
+plt.legend()
+plt.plot(t, -(weight[0] + weight[1] * t)/weight[2])
+#plt.savefig('graph1.png')
+plt.show()
 # =============================================================================
 # SVM with gradient descent
 # Cost function is SSE(Sum of Squared Errors)
@@ -76,11 +98,22 @@ for i in range(epoch):
     else:
         print(weight)
         break
+    t = np.arange(-2, 2)
+    plt.scatter(X_std[:48, 0], X_std[:48, 1], label = "Class 0", marker = "x")
+    plt.scatter(X_std[48:, 0], X_std[48:, 1], label = "Class 1", marker = "v")
+    plt.xlabel("Alcohol")
+    plt.ylabel("Malic Acid")
+    plt.xlim(-3, 3)
+    plt.ylim(-3, 3)
+    plt.legend()
+    plt.plot(t, -(weight[0] + weight[1] * t)/weight[2])
+    #plt.savefig('graph1.png')
+    plt.show()
 
 # =============================================================================
 # Plot the decision boundary
 # =============================================================================
-t = np.arange(-2, 2)
-plt.plot(t, -(weight[0] + weight[1] * t)/weight[2])
-#plt.savefig('graph1.png')
-plt.show()
+#t = np.arange(-2, 2)
+#plt.plot(t, -(weight[0] + weight[1] * t)/weight[2])
+##plt.savefig('graph1.png')
+#plt.show()
